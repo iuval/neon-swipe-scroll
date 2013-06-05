@@ -16,7 +16,7 @@ var canvasVideo = function() {
     video: true,
   }, function(localMediaStream) {
     video.src = window.URL.createObjectURL(localMediaStream);
-    drawFrame();
+    drawFrameWithBorders();
   }, function(e) {
     if (e.code = 1) {
       console.log("User declined permission.");
@@ -25,27 +25,58 @@ var canvasVideo = function() {
 
   function reloadMode() {
     video.pause();
-    var wait = setTimeout(function(){
+    var wait = setTimeout(function() {
     video.play();
     }, 5);
   }
 
   function drawFrame() {
-    bcv.drawImage(video, 0, 0, w, h);
-    var apx = bcv.getImageData(0, 0, w, h);
-    ctx.putImageData(apx, 0, 0);
-    setTimeout(function() {
-      drawFrame();
-    }, 60);
+    var redraw = function() {
+      setTimeout(function() {
+        drawFrame();
+      }, 0);
+    }
+
+    try {
+      bcv.drawImage(video, 0, 0, w, h);
+      var apx = bcv.getImageData(0, 0, w, h);
+      ctx.putImageData(apx, 0, 0);
+      redraw();
+    } catch(e) {
+      redraw();
+    }
   }
 
   function drawFrameWithBorders() {
-    bcv.drawImage(video, 0, 0, w, h);
-    var apx = bcv.getImageData(0, 0, w, h);
-    ctx.putImageData(apx, 0, 0);
-    setTimeout(function() {
-      drawFrame();
-    }, 60);
+    var redraw = function() {
+      setTimeout(function() {
+        drawFrame();
+      }, 0);
+    }
+
+    try {
+      bcv.drawImage(video, 0, 0, w, h);
+      var apx = bcv.getImageData(0, 0, w, h),
+          data = apx.data;
+
+      // The data array is secuencial for the
+      // three colors of each pixel (0 to 255 value)
+      for (var i = 0; i < data.length; i += 4) {
+        var r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
+
+        data[i]     = 255 - r;
+        data[i + 1] = 255 - g;
+        data[i + 2] = 255 - b;
+
+      }
+      apx.data = data;
+      ctx.putImageData(apx, 0, 0);
+      redraw();
+    } catch(e) {
+      redraw();
+    }
   }
 }
 
