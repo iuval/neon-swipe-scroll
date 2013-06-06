@@ -8,7 +8,9 @@ var canvasVideo = function() {
   ctx = canvas.getContext('2d'),
   bcv = backcvs.getContext('2d'),
   w = canvas.width,
-  h = canvas.height;
+  h = canvas.height,
+  previousImageData = false,
+  motionThreshold = 10; // The color delta needed to consider a movement
 
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
@@ -17,7 +19,7 @@ var canvasVideo = function() {
   }, function(localMediaStream) {
     // On Succecss
     video.src = window.URL.createObjectURL(localMediaStream);
-    drawFrameInverted();
+    drawFrame();
   }, function(e) {
     // On Fail
     if (e.code = 1) {
@@ -41,23 +43,6 @@ var canvasVideo = function() {
 
     try {
       bcv.drawImage(video, 0, 0, w, h);
-      var apx = bcv.getImageData(0, 0, w, h);
-      ctx.putImageData(apx, 0, 0);
-      redraw();
-    } catch(e) {
-      redraw();
-    }
-  }
-
-  function drawFrameInverted() {
-    var redraw = function() {
-      setTimeout(function() {
-        drawFrameInverted();
-      }, 0);
-    }
-
-    try {
-      bcv.drawImage(video, 0, 0, w, h);
       var apx = bcv.getImageData(0, 0, w, h),
           data = apx.data;
 
@@ -66,14 +51,34 @@ var canvasVideo = function() {
       for (var i = 0; i < data.length; i += 4) {
         var r = data[i],
             g = data[i + 1],
-            b = data[i + 2];
+            b = data[i + 2],
+            grayScale = (r + g + b) / 3; // Converts the pixel to grayscale
 
-        data[i]     = 255 - r;
-        data[i + 1] = 255 - g;
-        data[i + 2] = 255 - b;
+            // Add more brightness to reduce noice
+            grayScale += 50;
+            if (grayScale > 255) {
+              grayScale = 255;
+            }
 
+        if (!previousImageData) break;
+
+        // Get the previous pixels and grayscale
+        var previousR = previousImageData.data[i],
+            previousG = previousImageData.data[i + 1],
+            previousB = previousImageData.data[i + 2]
+            previousGrayScale = (previousR + previousG + previousB) / 3;
+
+        if (grayScale - previousGrayScale < motionThreshold) {
+          // Paint it red
+          data[i] = 255;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+        }
+
+        
       }
       apx.data = data;
+      previousImageData = apx;
       ctx.putImageData(apx, 0, 0);
       redraw();
     } catch(e) {
