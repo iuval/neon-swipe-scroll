@@ -10,7 +10,8 @@ var canvasVideo = function() {
   w = canvas.width,
   h = canvas.height,
   previousImageData = false,
-  motionThreshold = 10; // The color delta needed to consider a movement
+  motionDetectedPixels = [],
+  motionThreshold = 150; // The color delta needed to consider a movement
 
   navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
@@ -54,13 +55,10 @@ var canvasVideo = function() {
             b = data[i + 2],
             grayScale = (r + g + b) / 3; // Converts the pixel to grayscale
 
-            // Add more brightness to reduce noice
-            grayScale += 50;
-            if (grayScale > 255) {
-              grayScale = 255;
-            }
-
-        if (!previousImageData) break;
+        if (!previousImageData) {
+          previousImageData = apx;
+          continue;
+        }
 
         // Get the previous pixels and grayscale
         var previousR = previousImageData.data[i],
@@ -68,17 +66,21 @@ var canvasVideo = function() {
             previousB = previousImageData.data[i + 2]
             previousGrayScale = (previousR + previousG + previousB) / 3;
 
-        if (grayScale - previousGrayScale < motionThreshold) {
+        var pixelDelta = grayScale - previousGrayScale;
+
+        if (Math.abs(pixelDelta) > motionThreshold) {
           // Paint it red
           data[i] = 255;
           data[i + 1] = 0;
           data[i + 2] = 0;
         }
 
-        
+        previousImageData.data[i] = r;
+        previousImageData.data[i + 1] = g;
+        previousImageData.data[i + 2] = b;
       }
-      apx.data = data;
-      previousImageData = apx;
+
+      apx.data = data; // add the red-painted pixels
       ctx.putImageData(apx, 0, 0);
       redraw();
     } catch(e) {
