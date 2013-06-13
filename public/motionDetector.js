@@ -126,11 +126,11 @@ function MotionDetector(video, output, scrollBy) {
       scanCount = 0;
       var lightLevel = getLightLevel(currentImageData);
       console.log(lightLevel);
-      if (lightLevel > 0 && lightLevel <= 20) {
+      if (lightLevel > 0 && lightLevel <= 10) {
         PIXEL_CHANGE_THRESHOLD = 20;
         FRAME_THRESHOLD = 20;
       }
-      else if (lightLevel > 20 && lightLevel < 25) {
+      else if (lightLevel > 10 && lightLevel < 25) {
         PIXEL_CHANGE_THRESHOLD = 40;
         FRAME_THRESHOLD = 200;
       }
