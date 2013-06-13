@@ -18,8 +18,9 @@ function MotionDetector(video, output, scrollBy) {
     , searching = true
     , remainingFrames
     , originalWeight = 0
+    , scanCount = 0
     ;
-    
+
   var color = {
     difference:{
       r: 255,
@@ -60,6 +61,8 @@ function MotionDetector(video, output, scrollBy) {
       data1 = sourceData.data,
       data2 = lastImageData.data,
       e;
+
+    checkLigth(data1);
 
     if (data1.length != data2.length)
       return;
@@ -115,11 +118,37 @@ function MotionDetector(video, output, scrollBy) {
         }
       }
     }
-    //}
-/*    if (totalPixels > 100){
-      averageX = sumX / totalPixels;
-      averageY = sumY / totalPixels;
-    }*/
+  };
+
+  var checkLigth = function(currentImageData){
+    scanCount++;
+    if(scanCount == 100){ // every 100 frames, check the light
+      scanCount = 0;
+      var lightLevel = getLightLevel(currentImageData);
+      console.log(lightLevel);
+      if (lightLevel > 0 && lightLevel <= 20) {
+        PIXEL_CHANGE_THRESHOLD = 20;
+        FRAME_THRESHOLD = 20;
+      }
+      else if (lightLevel > 20 && lightLevel < 25) {
+        PIXEL_CHANGE_THRESHOLD = 40;
+        FRAME_THRESHOLD = 200;
+      }
+      else {
+        PIXEL_CHANGE_THRESHOLD = 40;
+        FRAME_THRESHOLD = 300;
+      }
+    }
+  }
+
+  // Will return the average intensity of all pixels.  Used for calibrating sensitivity based on room light level.
+  var getLightLevel = function (imageData) {
+    var value = 0;
+    for (var i = 0; i < imageData.length; i += 4) {
+      value += (imageData[i] + imageData[i + 1] + imageData[i + 2]) / 3;
+    }
+
+    return value / imageData.length;
   };
 
   /**
