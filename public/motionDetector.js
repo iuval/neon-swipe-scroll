@@ -7,19 +7,19 @@ function MotionDetector(video, output, scrollBy) {
   "use strict";
   var self = this;
 
-  var sourceData
-    , lastImageData
-    , contextBlended
-    , blended
-    , width
-    , height
-    , PIXEL_CHANGE_THRESHOLD = 50
-    , FRAME_THRESHOLD = 200
-    , searching = true
-    , remainingFrames
-    , originalWeight = 0
-    , scanCount = 0
-    ;
+  var sourceData,
+      lastImageData,
+      contextBlended,
+      blended,
+      width,
+      height,
+      PIXEL_CHANGE_THRESHOLD = 50,
+      FRAME_THRESHOLD        = 200,
+      searching              = true,
+      remainingFrames        = 10,
+      originalWeight         = 0,
+      scanCount              = 0,
+      brightnessAdjustment   = 0;
 
   var color = {
     difference:{
@@ -42,7 +42,7 @@ function MotionDetector(video, output, scrollBy) {
   };
 
   /**
-   * Binary round function.
+   * Binary round function. 
    * @private
    * @param {Number} value
    * @return {Number}
@@ -52,21 +52,20 @@ function MotionDetector(video, output, scrollBy) {
   };
 
   /**
-   * Calculate difference between 2 images and create blended data.
+   * TODO
    *
    * @private
    */
-  var difference = function () {
+  var process = function () {
     var target = blended.data,
-      data1 = sourceData.data,
-      data2 = lastImageData.data,
-      e;
-
-    checkLigth(data1);
+        data1  = sourceData.data, 
+        data2  = lastImageData.data;
 
     if (data1.length != data2.length)
       return;
 
+    checkLigth(data1);
+    
     var sumX = 0
       , sumY = 0
       , totalPixels = 0;
@@ -78,6 +77,7 @@ function MotionDetector(video, output, scrollBy) {
 
         average1 = (data1[i] + data1[i + 1] + data1[i + 2]) / 3;
         average2 = (data2[i] + data2[i + 1] + data2[i + 2]) / 3;
+
         if (abs(average1 - average2) > PIXEL_CHANGE_THRESHOLD) {
           target[i] = 255;
           target[i + 1] = diff;
@@ -98,7 +98,6 @@ function MotionDetector(video, output, scrollBy) {
         remainingFrames = 10;
         searching = true;
         originalWeight = motionWeight;
-          console.log(motionWeight + " -> " );
       }
     } else {
       if (remainingFrames <= 0) {
@@ -125,19 +124,9 @@ function MotionDetector(video, output, scrollBy) {
     if(scanCount == 100){ // every 100 frames, check the light
       scanCount = 0;
       var lightLevel = getLightLevel(currentImageData);
-      console.log(lightLevel);
-      if (lightLevel > 0 && lightLevel <= 10) {
-        PIXEL_CHANGE_THRESHOLD = 20;
-        FRAME_THRESHOLD = 20;
-      }
-      else if (lightLevel > 10 && lightLevel < 25) {
-        PIXEL_CHANGE_THRESHOLD = 40;
-        FRAME_THRESHOLD = 200;
-      }
-      else {
-        PIXEL_CHANGE_THRESHOLD = 40;
-        FRAME_THRESHOLD = 300;
-      }
+
+      PIXEL_CHANGE_THRESHOLD = Math.max(20 ,Math.min(30 ,lightLevel));
+      FRAME_THRESHOLD = 300;
     }
   }
 
@@ -158,12 +147,15 @@ function MotionDetector(video, output, scrollBy) {
    */
   var blend = function () {
     sourceData = output.getImageData(0, 0, width, height);
+
+  //  adjustBrightness(sourceData);
+
     if (!lastImageData) {
       lastImageData = output.getImageData(0, 0, width, height);
     }
     blended = output.getImageData(0, 0, width, height);
 
-    difference();
+    process();
 
     if (contextBlended){
       contextBlended.putImageData(blended, 0, 0);
