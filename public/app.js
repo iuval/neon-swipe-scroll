@@ -3,32 +3,18 @@
  *
  * @constructor
  */
-function App(){
+function App(vertical){
     var self = this;
 
-    var canvas = document.getElementById('canvas'),
-        ctx = canvas.getContext("2d"),
+    var canvas  = document.getElementById('canvas'),
+        ctx     = canvas.getContext("2d"),
         message = document.getElementById('message'),
-        webcam = document.getElementById('canvasVideo'),
-        maxY = $(document).height() - $(window).height(),
+        webcam  = document.getElementById('canvasVideo'),
+        maxY    = $(document).height() - $(window).height(),
         preventScroll = false,
-        motionDetector = new MotionDetector(webcam, ctx, function(dy) {
-          top += dy;
-          if(top < 0){
-            top = 0;
-          }else if(top > maxY){
-            top = maxY;
-          }
-          preventScroll = true;
-          $('html, body').animate({
-            scrollTop: top
-          }, 500, function(){ preventScroll = false; });
-        })
-      , interval
-      , top = 0
-      , last_x = 0
-      , last_y = 0
-      ;
+        motionDetector,
+        interval,
+        top = 0;
 
     /**
      * Cross-browser requestAnimationFrame function
@@ -42,7 +28,7 @@ function App(){
             window.oRequestAnimationFrame ||
             window.msRequestAnimationFrame ||
             function (callback){
-                window.setTimeout(callback, 1000 / 40);
+                window.setTimeout(callback, 1000 / 30);
             };
     })();
 
@@ -58,6 +44,27 @@ function App(){
       motionDetector.update();
 
       requestAnimFrame(animate);
+    };
+
+    var verticalScroll = function(dy) {
+      top += dy;
+      if (top < 0){
+        top = 0;
+      }else if (top > maxY){
+        top = maxY;
+      }
+      preventScroll = true;
+      $('html, body').animate({
+        scrollTop: top
+      }, 500, function(){ preventScroll = false; });
+    };
+
+    var horizontalScroll = function(dx) {
+      if (dx < 0){
+        $('.carousel').carousel('prev');
+      }else if (dx > 0){
+        $('.carousel').carousel('next');
+      }
     };
 
     /**
@@ -81,17 +88,22 @@ function App(){
             console.log("User declined permission.");
           }
         });
+
+        if(vertical){
+          motionDetector = new MotionDetector(webcam, ctx, true, verticalScroll);
+        }else{
+          motionDetector = new MotionDetector(webcam, ctx, false, horizontalScroll);
+        }
+        $(window).scroll(function () {
+          if(!preventScroll){
+            top = $(document).scrollTop();
+          }
+        });
       } else {
         canvas.style.display = 'none';
         message.innerHTML = 'Your browser doesn\'t support "getUserMedia" function.<br />Try it with Chrome or Opera.';
         message.style.display = 'block';
       }
-
-      $(window).scroll(function () {
-        if(!preventScroll){
-          top = $(document).scrollTop();
-        }
-      });
     };
 
     constructor();

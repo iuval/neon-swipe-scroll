@@ -2,8 +2,10 @@
  * @constructor
  * @param {Object} video - video element
  * @param {Object} output - canvas element for output motion data
+ * @param {Object} vertical - boolean, if the motion should be vertical or horizontal
+ * @param {Object} scrollBy - function that recieves the delta movement
  */
-function MotionDetector(video, output, scrollBy) {
+function MotionDetector(video, output, vertical, scrollBy) {
   "use strict";
   var self = this;
 
@@ -84,10 +86,18 @@ function MotionDetector(video, output, scrollBy) {
           target[i + 2] = diff;
           target[i + 3] = 255;
 
-          if( py < (height / 2) ){
-            motionWeight += 1;
+          if(vertical){
+            if( py < (height / 2) ){
+              motionWeight += 1;
+            }else{
+              motionWeight -= 1;
+            }
           }else{
-            motionWeight -= 1;
+            if( px < (width / 2) ){
+              motionWeight += 1;
+            }else{
+              motionWeight -= 1;
+            }
           }
         }
       }
@@ -126,7 +136,7 @@ function MotionDetector(video, output, scrollBy) {
       var lightLevel = getLightLevel(currentImageData);
 
       PIXEL_CHANGE_THRESHOLD = Math.max(20 ,Math.min(30 ,lightLevel));
-      FRAME_THRESHOLD = 300;
+      FRAME_THRESHOLD = 200;
     }
   }
 
