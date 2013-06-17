@@ -10,11 +10,8 @@ function App(vertical){
         ctx     = canvas.getContext("2d"),
         message = document.getElementById('message'),
         webcam  = document.getElementById('canvasVideo'),
-        maxY    = $(document).height() - $(window).height(),
-        preventScroll = false,
         motionDetector,
-        interval,
-        top = 0;
+        interval;
 
     /**
      * Cross-browser requestAnimationFrame function
@@ -46,26 +43,6 @@ function App(vertical){
       requestAnimFrame(animate);
     };
 
-    var verticalScroll = function(dy) {
-      top += dy;
-      if (top < 0){
-        top = 0;
-      }else if (top > maxY){
-        top = maxY;
-      }
-      preventScroll = true;
-      $('html, body').animate({
-        scrollTop: top
-      }, 500, function(){ preventScroll = false; });
-    };
-
-    var horizontalScroll = function(dx) {
-      if (dx < 0){
-        $('.carousel').carousel('prev');
-      }else if (dx > 0){
-        $('.carousel').carousel('next');
-      }
-    };
 
     /**
      * Local constructor
@@ -90,15 +67,10 @@ function App(vertical){
         });
 
         if(vertical){
-          motionDetector = new MotionDetector(webcam, ctx, true, verticalScroll);
+          motionDetector = new MotionDetector(webcam, ctx, true);
         }else{
-          motionDetector = new MotionDetector(webcam, ctx, false, horizontalScroll);
+          motionDetector = new MotionDetector(webcam, ctx, false);
         }
-        $(window).scroll(function () {
-          if(!preventScroll){
-            top = $(document).scrollTop();
-          }
-        });
       } else {
         canvas.style.display = 'none';
         message.innerHTML = 'Your browser doesn\'t support "getUserMedia" function.<br />Try it with Chrome or Opera.';

@@ -5,7 +5,7 @@
  * @param {Object} vertical - boolean, if the motion should be vertical or horizontal
  * @param {Object} scrollBy - function that recieves the delta movement
  */
-function MotionDetector(video, output, vertical, scrollBy) {
+function MotionDetector(video, output, vertical) {
   "use strict";
   var self = this;
 
@@ -16,12 +16,18 @@ function MotionDetector(video, output, vertical, scrollBy) {
       width,
       height,
       PIXEL_CHANGE_THRESHOLD = 50,
-      FRAME_THRESHOLD        = 200,
+      FRAME_THRESHOLD        = 300,
       searching              = true,
-      remainingFrames        = 10,
-      originalWeight         = 0,
+      remainingFrames        = 15,
       scanCount              = 0,
-      brightnessAdjustment   = 0;
+      brightnessAdjustment   = 0,
+      originPosition,
+      pixelsSum,
+      pixelCount;
+
+  var preventScroll = false,
+      maxY          = $(document).height() - $(window).height(),
+      top           = 0;
 
   var color = {
     difference:{
@@ -68,11 +74,16 @@ function MotionDetector(video, output, vertical, scrollBy) {
 
     checkLigth(data1);
     
-    var sumX = 0
-      , sumY = 0
-      , totalPixels = 0;
-    var average1, average2, diff, i;
-    var motionWeight = 0;
+    var sumX        = 0,
+        sumY        = 0,
+        totalPixels = 0,
+        average1,
+        average2,
+        diff,
+        i,
+        motionWeight = 0;
+    pixelsSum = 0;
+    pixelCount = 0;
     for (var py = 0; py < height; py ++) {
       for ( var px = 0; px < width; px ++){
         i = ( py * width * 4 ) + ( px * 4 );
@@ -86,18 +97,28 @@ function MotionDetector(video, output, vertical, scrollBy) {
           target[i + 2] = diff;
           target[i + 3] = 255;
 
-          if(vertical){
-            if( py < (height / 2) ){
-              motionWeight += 1;
+          if(searching){
+            if(vertical){
+              if( py < originPosition ){
+                motionWeight += 1;
+              }else{
+                motionWeight -= 1;
+              }
             }else{
-              motionWeight -= 1;
+              if( px < originPosition ){
+                motionWeight += 1;
+              }else{
+                motionWeight -= 1;
+              }
             }
           }else{
-            if( px < (width / 2) ){
-              motionWeight += 1;
-            }else{
-              motionWeight -= 1;
-            }
+            motionWeight += 1;
+          }
+          pixelCount++;
+          if(vertical){
+            pixelsSum += py;
+          }else{
+            pixelsSum += px;
           }
         }
       }
@@ -105,29 +126,35 @@ function MotionDetector(video, output, vertical, scrollBy) {
 
     if (!searching){
       if ( abs(motionWeight) > FRAME_THRESHOLD ){
-        remainingFrames = 10;
+        remainingFrames = 15;
         searching = true;
-        originalWeight = motionWeight;
+        originPosition = pixelsSum / pixelCount; // Average of x positions
       }
     } else {
       if (remainingFrames <= 0) {
         searching = false;
       } else {
         remainingFrames--;
-        if ( originalWeight > 0 ) {  //Original was Bottom
-          if ( motionWeight < -FRAME_THRESHOLD ) { //So we check Top
-            scrollBy(200)
-            searching = false;
-          }
-        } else {  //Original was Top
-          if( motionWeight > FRAME_THRESHOLD ) { //So we check Bot
-            scrollBy(-200)
-            searching = false;
-          }
+        if ( motionWeight < -FRAME_THRESHOLD ) { //So we check Top
+          scrollBy(200)
+          searching = false;
+        }else if( motionWeight > FRAME_THRESHOLD ) { //So we check Bot
+          scrollBy(-200)
+          searching = false;
         }
       }
     }
   };
+
+  var scrollBy = function(delta){
+    if(vertical){
+      if(!preventScroll){
+        verticalScroll(delta);
+      }
+    }else{
+      horizontalScroll(delta);
+    }
+  }
 
   var checkLigth = function(currentImageData){
     scanCount++;
@@ -135,8 +162,8 @@ function MotionDetector(video, output, vertical, scrollBy) {
       scanCount = 0;
       var lightLevel = getLightLevel(currentImageData);
 
-      PIXEL_CHANGE_THRESHOLD = Math.max(20 ,Math.min(30 ,lightLevel));
-      FRAME_THRESHOLD = 200;
+      PIXEL_CHANGE_THRESHOLD = Math.max(30 ,Math.min(40 ,lightLevel));
+      FRAME_THRESHOLD = 350;
     }
   }
 
@@ -183,6 +210,12 @@ function MotionDetector(video, output, vertical, scrollBy) {
     width = canvas.width;
     height = canvas.height;
     contextBlended = output;
+
+    $(window).scroll(function () {
+      if(!preventScroll){
+        top = $(document).scrollTop();
+      }
+    });
   };
 
   /**
@@ -192,6 +225,12 @@ function MotionDetector(video, output, vertical, scrollBy) {
    */
   var constructor = function () {
     initDOM();
+
+    if (vertical){
+      originPosition = height/2;
+    } else {
+      originPosition = width / 2;
+    }
   };
 
   //public
@@ -239,6 +278,27 @@ function MotionDetector(video, output, vertical, scrollBy) {
     }
 
     return round(average / ( (w / step) * (h / step) ));
+  };
+
+  var verticalScroll = function(dy) {
+    top += dy;
+    if (top < 0){
+      top = 0;
+    }else if (top > maxY){
+      top = maxY;
+    }
+    preventScroll = true;
+    $('html, body').animate({
+      scrollTop: top
+    }, 500, function(){ preventScroll = false; });
+  };
+
+  var horizontalScroll = function(dx) {
+    if (dx < 0){
+      $('.carousel').carousel('prev');
+    }else if (dx > 0){
+      $('.carousel').carousel('next');
+    }
   };
 
   //calling local constructor
