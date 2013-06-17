@@ -3,18 +3,19 @@
  * @param {Object} video - video element
  * @param {Object} output - canvas element for output motion data
  * @param {Object} vertical - boolean, if the motion should be vertical or horizontal
- * @param {Object} scrollBy - function that recieves the delta movement
  */
 function MotionDetector(video, output, vertical) {
   "use strict";
   var self = this;
 
-  var sourceData,
+  var target,
+      sourceData,
       lastImageData,
       contextBlended,
       blended,
       width,
       height,
+      pixelJump              = 1,
       PIXEL_CHANGE_THRESHOLD = 50,
       FRAME_THRESHOLD        = 300,
       searching              = true,
@@ -22,8 +23,8 @@ function MotionDetector(video, output, vertical) {
       scanCount              = 0,
       brightnessAdjustment   = 0,
       originPosition,
-      pixelsSum,
-      pixelCount;
+      pixelsPositionSum,
+      pixelsCount;
 
   var preventScroll = false,
       maxY          = $(document).height() - $(window).height(),
@@ -65,7 +66,7 @@ function MotionDetector(video, output, vertical) {
    * @private
    */
   var process = function () {
-    var target = blended.data,
+    var targetData = target.data,
         data1  = sourceData.data, 
         data2  = lastImageData.data;
 
@@ -82,20 +83,20 @@ function MotionDetector(video, output, vertical) {
         diff,
         i,
         motionWeight = 0;
-    pixelsSum = 0;
-    pixelCount = 0;
-    for (var py = 0; py < height; py ++) {
-      for ( var px = 0; px < width; px ++){
+    pixelsPositionSum = 0;
+    pixelsCount = 0;
+    for (var py = 0; py < height; py += pixelJump) {
+      for ( var px = 0; px < width; px += pixelJump){
         i = ( py * width * 4 ) + ( px * 4 );
 
         average1 = (data1[i] + data1[i + 1] + data1[i + 2]) / 3;
         average2 = (data2[i] + data2[i + 1] + data2[i + 2]) / 3;
 
         if (abs(average1 - average2) > PIXEL_CHANGE_THRESHOLD) {
-          target[i] = 255;
-          target[i + 1] = diff;
-          target[i + 2] = diff;
-          target[i + 3] = 255;
+          targetData[i] = 255;
+          targetData[i + 1] = diff;
+          targetData[i + 2] = diff;
+          targetData[i + 3] = 255;
 
           if(searching){
             if(vertical){
@@ -114,12 +115,17 @@ function MotionDetector(video, output, vertical) {
           }else{
             motionWeight += 1;
           }
-          pixelCount++;
+          pixelsCount++;
           if(vertical){
-            pixelsSum += py;
+            pixelsPositionSum += py;
           }else{
-            pixelsSum += px;
+            pixelsPositionSum += px;
           }
+        }else{
+          targetData[i] *= 0.8;
+          targetData[i + 1] *= 0.8;
+          targetData[i + 2] *= 0.8;
+          targetData[i + 3] = 100;
         }
       }
     }
@@ -128,17 +134,17 @@ function MotionDetector(video, output, vertical) {
       if ( abs(motionWeight) > FRAME_THRESHOLD ){
         remainingFrames = 15;
         searching = true;
-        originPosition = pixelsSum / pixelCount; // Average of x positions
+        originPosition = pixelsPositionSum / pixelsCount; // Average of positions
       }
     } else {
       if (remainingFrames <= 0) {
         searching = false;
       } else {
         remainingFrames--;
-        if ( motionWeight < -FRAME_THRESHOLD ) { //So we check Top
+        if ( motionWeight < -FRAME_THRESHOLD ) {
           scrollBy(200)
           searching = false;
-        }else if( motionWeight > FRAME_THRESHOLD ) { //So we check Bot
+        }else if( motionWeight > FRAME_THRESHOLD ) {
           scrollBy(-200)
           searching = false;
         }
@@ -185,8 +191,6 @@ function MotionDetector(video, output, vertical) {
   var blend = function () {
     sourceData = output.getImageData(0, 0, width, height);
 
-  //  adjustBrightness(sourceData);
-
     if (!lastImageData) {
       lastImageData = output.getImageData(0, 0, width, height);
     }
@@ -195,7 +199,7 @@ function MotionDetector(video, output, vertical) {
     process();
 
     if (contextBlended){
-      contextBlended.putImageData(blended, 0, 0);
+      contextBlended.putImageData(target, 0, 0);
     }
 
     lastImageData = sourceData;
@@ -231,6 +235,8 @@ function MotionDetector(video, output, vertical) {
     } else {
       originPosition = width / 2;
     }
+
+    target = contextBlended.getImageData(0, 0, width, height);
   };
 
   //public
