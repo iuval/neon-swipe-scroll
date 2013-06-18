@@ -14,6 +14,9 @@ function App(unity, vertical){
         motionDetector,
         interval;
 
+    var preventScroll = false,
+        maxY          = $(document).height() - $(window).height(),
+        top           = 0;
     /**
      * Cross-browser requestAnimationFrame function
      *

@@ -12,13 +12,14 @@
   <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
   <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
   <script type="text/javascript">
+      var app;
       if(document.addEventListener){
-          document.addEventListener('DOMContentLoaded', function(){
-              new App(false);
-          });
+        document.addEventListener('DOMContentLoaded', function(){
+          app = new App(false, false);
+        });
       } else {
           window.onload = function(){
-              new App(false);
+            app = new App(false, false);
           };
       }
   </script>

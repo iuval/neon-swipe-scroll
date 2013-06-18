@@ -25,10 +25,6 @@ function MotionDetector(output, vertical) {
       pixelsPositionSum,
       pixelsCount;
 
-  var preventScroll = false,
-      maxY          = $(document).height() - $(window).height(),
-      top           = 0;
-
   var color = {
     difference:{
       r: 255,
@@ -141,10 +137,10 @@ function MotionDetector(output, vertical) {
       } else {
         remainingFrames--;
         if ( motionWeight < -FRAME_THRESHOLD ) {
-          scrollBy(200)
+          app.scrollBy(200)
           searching = false;
         }else if( motionWeight > FRAME_THRESHOLD ) {
-          scrollBy(-200)
+          app.scrollBy(-200)
           searching = false;
         }
       }

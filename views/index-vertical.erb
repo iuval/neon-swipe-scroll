@@ -10,13 +10,14 @@
   <script src="motionDetector.js" type="text/javascript"></script>
   <script src="app.js" type="text/javascript"></script>
   <script type="text/javascript">
+      var app;
       if(document.addEventListener){
-          document.addEventListener('DOMContentLoaded', function(){
-              new App(true);
-          });
+        document.addEventListener('DOMContentLoaded', function(){
+          app = new App(false, true);
+        });
       } else {
           window.onload = function(){
-              new App(true);
+            app = new App(false, true);
           };
       }
   </script>
