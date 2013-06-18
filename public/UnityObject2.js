@@ -1387,7 +1387,7 @@ var UnityObject2 = function (config) {
                 }
 
                 //var tmpHtml = '<div id="' + targetEl.attr('id') + '" style="width: ' + _appendPX(width) + '; height: ' + _appendPX(height) + ';"><object classid="clsid:444785F1-DE89-4295-863A-D46C3A781394" style="display: block; width: 100%; height: 100%;"' + at + '>' + pt + '</object></div>';
-                var tmpHtml = '<object classid="clsid:444785F1-DE89-4295-863A-D46C3A781394" style="display: block; width: ' + _appendPX(width) + '; height: ' + _appendPX(height) + ';"' + at + '>' + pt + '</object>';
+                var tmpHtml = '<object classid="clsid:444785F1-DE89-4295-863A-D46C3A781394" style="display: block;"' + at + '>' + pt + '</object>';
                 var $object = jQuery(tmpHtml);
                 targetEl.append( $object );
                 embeddedObjects.push( targetEl.attr('id') );
