@@ -1,10 +1,9 @@
 /**
  * @constructor
- * @param {Object} video - video element
  * @param {Object} output - canvas element for output motion data
  * @param {Object} vertical - boolean, if the motion should be vertical or horizontal
  */
-function MotionDetector(video, output, vertical) {
+function MotionDetector(output, vertical) {
   "use strict";
   var self = this;
 
@@ -152,16 +151,6 @@ function MotionDetector(video, output, vertical) {
     }
   };
 
-  var scrollBy = function(delta){
-    if(vertical){
-      if(!preventScroll){
-        verticalScroll(delta);
-      }
-    }else{
-      horizontalScroll(delta);
-    }
-  }
-
   var checkLigth = function(currentImageData){
     scanCount++;
     if(scanCount == 100){ // every 100 frames, check the light
@@ -284,27 +273,6 @@ function MotionDetector(video, output, vertical) {
     }
 
     return round(average / ( (w / step) * (h / step) ));
-  };
-
-  var verticalScroll = function(dy) {
-    top += dy;
-    if (top < 0){
-      top = 0;
-    }else if (top > maxY){
-      top = maxY;
-    }
-    preventScroll = true;
-    $('html, body').animate({
-      scrollTop: top
-    }, 500, function(){ preventScroll = false; });
-  };
-
-  var horizontalScroll = function(dx) {
-    if (dx < 0){
-      $('.carousel').carousel('prev');
-    }else if (dx > 0){
-      $('.carousel').carousel('next');
-    }
   };
 
   //calling local constructor

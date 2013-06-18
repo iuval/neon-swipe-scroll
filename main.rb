@@ -7,3 +7,7 @@ end
 get '/horizontal' do
   erb :"index-horizontal"
 end
+
+get '/unity' do
+  erb :"index-unity"
+end
