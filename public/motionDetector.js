@@ -1,39 +1,20 @@
-/**
- * @constructor
- * @param {Object} output - canvas element for output motion data
- * @param {Object} vertical - boolean, if the motion should be vertical or horizontal
- */
-function MotionDetector(output, vertical) {
-  "use strict";
-  var self = this;
-
-  var target,
-      sourceData,
-      lastImageData,
-      contextBlended,
-      blended,
-      width,
-      height,
-      pixelJump              = 1,
-      PIXEL_CHANGE_THRESHOLD = 50,
-      FRAME_THRESHOLD        = 300,
-      searching              = true,
-      remainingFrames        = 15,
-      scanCount              = 0,
-      brightnessAdjustment   = 0,
-      originPosition,
-      pixelsPositionSum,
-      pixelsCount;
-
-  var color = {
-    difference:{
-      r: 255,
-      g: 255,
-      b: 255,
-      a: 255
-    }
-  };
-
+var MotionDetector = {
+  webcam: null,
+  input: null,
+  width: null,
+  height: null,
+  sourceData: null,
+  lastImageData: null,
+  pixelJump: 1,
+  PIXEL_CHANGE_THRESHOLD: 50,
+  FRAME_THRESHOLD: 300,
+  searching: true,
+  remainingFrames: 15,
+  scanCount: 0,
+  brightnessAdjustment: 0,
+  originPosition: 0,
+  pixelsPositionSum: 0,
+  pixelsCount: 0,
   /**
    * Binary abs function.
    *
@@ -41,9 +22,9 @@ function MotionDetector(output, vertical) {
    * @param {Number} value
    * @return {Number}
    */
-  var abs = function (value) {
+  abs: function (value) {
     return (value ^ (value >> 31)) - (value >> 31);
-  };
+  },
 
   /**
    * Binary round function. 
@@ -51,24 +32,18 @@ function MotionDetector(output, vertical) {
    * @param {Number} value
    * @return {Number}
    */
-  var round = function(value){
+  round: function (value) {
     return (0.5 + value) << 0;
-  };
+  },
 
-  /**
-   * TODO
-   *
-   * @private
-   */
-  var process = function () {
-    var targetData = target.data,
-        data1  = sourceData.data, 
-        data2  = lastImageData.data;
+  process: function () {
+    var data1  = this.sourceData.data, 
+        data2  = this.lastImageData.data;
 
     if (data1.length != data2.length)
       return;
 
-    checkLigth(data1);
+    this.checkLigth(data1);
     
     var sumX        = 0,
         sumY        = 0,
@@ -78,30 +53,25 @@ function MotionDetector(output, vertical) {
         diff,
         i,
         motionWeight = 0;
-    pixelsPositionSum = 0;
-    pixelsCount = 0;
-    for (var py = 0; py < height; py += pixelJump) {
-      for ( var px = 0; px < width; px += pixelJump){
-        i = ( py * width * 4 ) + ( px * 4 );
+    this.pixelsPositionSum = 0;
+    this.pixelsCount = 0;
+    for (var py = 0; py < this.height; py ++ ) {
+      for ( var px = 0; px < this.width; px ++ ){
+        i = ( py * this.width * 4 ) + ( px * 4 );
 
         average1 = (data1[i] + data1[i + 1] + data1[i + 2]) / 3;
         average2 = (data2[i] + data2[i + 1] + data2[i + 2]) / 3;
 
-        if (abs(average1 - average2) > PIXEL_CHANGE_THRESHOLD) {
-          targetData[i] = 255;
-          targetData[i + 1] = diff;
-          targetData[i + 2] = diff;
-          targetData[i + 3] = 255;
-
-          if(searching){
-            if(vertical){
-              if( py < originPosition ){
+        if (this.abs(average1 - average2) > this.PIXEL_CHANGE_THRESHOLD) {
+          if(this.searching){
+            if(this.vertical){
+              if( py < this.originPosition ){
                 motionWeight += 1;
               }else{
                 motionWeight -= 1;
               }
             }else{
-              if( px < originPosition ){
+              if( px < this.originPosition ){
                 motionWeight += 1;
               }else{
                 motionWeight -= 1;
@@ -110,167 +80,91 @@ function MotionDetector(output, vertical) {
           }else{
             motionWeight += 1;
           }
-          pixelsCount++;
-          if(vertical){
-            pixelsPositionSum += py;
+          this.pixelsCount++;
+          if(this.vertical){
+            this.pixelsPositionSum += py;
           }else{
-            pixelsPositionSum += px;
+            this.pixelsPositionSum += px;
           }
-        }else{
-          targetData[i] *= 0.8;
-          targetData[i + 1] *= 0.8;
-          targetData[i + 2] *= 0.8;
-          targetData[i + 3] = 100;
         }
       }
     }
 
-    if (!searching){
-      if ( abs(motionWeight) > FRAME_THRESHOLD ){
-        remainingFrames = 15;
-        searching = true;
-        originPosition = pixelsPositionSum / pixelsCount; // Average of positions
+    if (!this.searching){
+      if ( this.abs(motionWeight) > this.FRAME_THRESHOLD ){
+        this.remainingFrames = 15;
+        this.searching = true;
+        this.originPosition = this.pixelsPositionSum / this.pixelsCount; // Average of positions
       }
     } else {
-      if (remainingFrames <= 0) {
-        searching = false;
+      if (this.remainingFrames <= 0) {
+        this.searching = false;
       } else {
-        remainingFrames--;
-        if ( motionWeight < -FRAME_THRESHOLD ) {
-          app.scrollBy(200)
-          searching = false;
-        }else if( motionWeight > FRAME_THRESHOLD ) {
-          app.scrollBy(-200)
-          searching = false;
+        this.remainingFrames--;
+        if ( motionWeight < -this.FRAME_THRESHOLD ) {
+          scrollBy(200)
+          this.searching = false;
+        }else if( motionWeight > this.FRAME_THRESHOLD ) {
+          scrollBy(-200)
+          this.searching = false;
         }
       }
     }
-  };
+  },
 
-  var checkLigth = function(currentImageData){
-    scanCount++;
-    if(scanCount == 100){ // every 100 frames, check the light
-      scanCount = 0;
-      var lightLevel = getLightLevel(currentImageData);
+  checkLigth: function (currentImageData) {
+    this.scanCount++;
+    if(this.scanCount == 100){ // every 100 frames, check the light
+      this.scanCount = 0;
+      var lightLevel = this.getLightLevel(currentImageData);
 
-      PIXEL_CHANGE_THRESHOLD = Math.max(30 ,Math.min(40 ,lightLevel));
-      FRAME_THRESHOLD = 350;
+      this.PIXEL_CHANGE_THRESHOLD = Math.max(30 ,Math.min(40 ,lightLevel));
+      this.FRAME_THRESHOLD = 350;
     }
-  }
+  },
 
   // Will return the average intensity of all pixels.  Used for calibrating sensitivity based on room light level.
-  var getLightLevel = function (imageData) {
+  getLightLevel: function (imageData) {
     var value = 0;
     for (var i = 0; i < imageData.length; i += 4) {
       value += (imageData[i] + imageData[i + 1] + imageData[i + 2]) / 3;
     }
 
     return value / imageData.length;
-  };
+  },
 
   /**
    * Blend previous and new frame.
    *
    * @private
    */
-  var blend = function () {
-    sourceData = output.getImageData(0, 0, width, height);
+  update: function () {
+    this.input.drawImage(this.webcam, 0, 0, this.width, this.height);
 
-    if (!lastImageData) {
-      lastImageData = output.getImageData(0, 0, width, height);
-    }
-    blended = output.getImageData(0, 0, width, height);
+    this.sourceData = this.input.getImageData(0, 0, this.width, this.height);
 
-    process();
+    this.process();
 
-    if (contextBlended){
-      contextBlended.putImageData(target, 0, 0);
-    }
-
-    lastImageData = sourceData;
-  };
-
-  /**
-   * DOM initialization
-   *
-   * @private
-   */
-  var initDOM = function () {
-    width = canvas.width;
-    height = canvas.height;
-    contextBlended = output;
-
-    $(window).scroll(function () {
-      if(!preventScroll){
-        top = $(document).scrollTop();
-      }
-    });
-  };
+    this.lastImageData = this.sourceData;
+  },
 
   /**
    * Local constructor.
    *
    * @private
    */
-  var constructor = function () {
-    initDOM();
+  init: function (video, canvas, ctx, vertical) {
+    this.webcam = video;
+    this.input = ctx;
+    this.width = canvas.width;
+    this.height = canvas.height;
+    this.sourceData = this.input.getImageData(0, 0, this.width, this.height);
+    this.lastImageData = this.input.getImageData(0, 0, this.width, this.height);
 
     if (vertical){
-      originPosition = height/2;
+      this.originPosition = this.height/2;
     } else {
-      originPosition = width / 2;
+      this.originPosition = this.width / 2;
     }
-
-    target = contextBlended.getImageData(0, 0, width, height);
-  };
-
-  //public
-
-  /**
-   * Update data.
-   *
-   * @public
-   */
-  self.update = function () {
-    blend();
-  };
-
-  /**
-   * Get blended data.
-   *
-   * @public
-   * @return {Array}
-   */
-  self.getBlended = function () {
-    return blended;
-  };
-
-  /**
-   * Get average of blended data in rectangle area.
-   *
-   * @public
-   * @param {Number} x - x coordinate of top-left corner of a rectangle
-   * @param {Number} y - y coordinate of top-left corner of a rectangle
-   * @param {Number} w - width of a rectangle
-   * @param {Number} h - height of a rectangle
-   * @param {Number} step - step of checking. Default is 1.
-   * @return {Number} Average
-   */
-  self.getMotionAverage = function(x, y, w, h, step){
-    var average = 0;
-    var blendedData = blended.data;
-    step = step || 1;
-
-    for (var i = ~~y, yk = ~~(y + h); i < yk; i += step) {
-      for (var j = ~~x, xk = ~~(x + w), b; j < xk; j += step) {
-        b = ~~(j * 4 + i * width * 4);
-        average += (blendedData[b] + blendedData[b + 1] + blendedData[b + 2]) / 3;
-      }
-    }
-
-    return round(average / ( (w / step) * (h / step) ));
-  };
-
-  //calling local constructor
-  constructor();
-}
+  },
+};
