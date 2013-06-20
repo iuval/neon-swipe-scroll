@@ -32,13 +32,13 @@ var MotionDetector = {
    * @param {Number} value
    * @return {Number}
    */
-  round: function (value) {
+   round: function (value) {
     return (0.5 + value) << 0;
   },
 
   process: function () {
     var data1  = this.sourceData.data, 
-        data2  = this.lastImageData.data;
+    data2  = this.lastImageData.data;
 
     if (data1.length != data2.length)
       return;
@@ -46,13 +46,13 @@ var MotionDetector = {
     this.checkLigth(data1);
     
     var sumX        = 0,
-        sumY        = 0,
-        totalPixels = 0,
-        average1,
-        average2,
-        diff,
-        i,
-        motionWeight = 0;
+    sumY        = 0,
+    totalPixels = 0,
+    average1,
+    average2,
+    diff,
+    i,
+    motionWeight = 0;
     this.pixelsPositionSum = 0;
     this.pixelsCount = 0;
     for (var py = 0; py < this.height; py ++ ) {
