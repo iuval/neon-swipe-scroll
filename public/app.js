@@ -132,7 +132,7 @@ var smartInit = function (vertical) {
     message.innerHTML = 'Your browser doesn\'t support "getUserMedia" function.<br />Try it with Chrome or Opera.';
     message.style.display = 'block';
 
-    startUnityPlayer();
+    loadUnityPlayer();
   }      
 
 };
