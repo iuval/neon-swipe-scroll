@@ -51,14 +51,14 @@ JSHandtracking.prototype.tick = function(){
   if (this.video.readyState === this.video.HAVE_ENOUGH_DATA){
     image = this.snapshot();
 
-    // CHANGE: candidate = this.tracker.detect(image);
-    contours = this.tracker.detect(image);
+    candidate = this.tracker.detect(image);
+   // contours = this.tracker.detect(image);
 
-    for (var i = contours.length;i--;){
-      this.draw(contours[i]);
-    }
+    // for (var i = contours.length;i--;){
+    //   this.draw(contours[i]);
+    // }
 
-   // CHANGE: this.draw(candidate);
+    this.draw(candidate);
   }
 };
 
@@ -113,7 +113,6 @@ JSHandtracking.prototype.drawDefects = function(defects, color){
       minY = 0;
 
   if (len > 0){
-    this.context.beginPath();
     this.context.strokeStyle = color;
 
     for (; i < len; ++ i){
@@ -131,9 +130,6 @@ JSHandtracking.prototype.drawDefects = function(defects, color){
     if (h > w*1.5 && h < w*1.6) {
       console.log('rectangle');
     }
-
-    this.context.stroke();
-    this.context.closePath();
   }
 };
 

@@ -44,8 +44,8 @@ HT.Tracker.prototype.detect = function(image){
 
   this.contours = CV.findContours(this.mask);
 
-  // CHANGE: return this.findCandidate(this.contours, image.width * image.height * 0.05, 0.005);
-  return this.findCandidates(this.contours, image.width * image.height * 0.05, 0.005);
+  return this.findCandidate(this.contours, image.width * image.height * 0.05, 0.005);
+  //return this.findCandidates(this.contours, image.width * image.height * 0.05, 0.005);
 };
 
 HT.Tracker.prototype.findCandidate = function(contours, minSize, epsilon){
@@ -130,7 +130,7 @@ HT.Skinner = function(params){
 };
 
 HT.Skinner.prototype.calibrate = function(image, i){
-  var src = image.data,
+  var src = imageSrc.data,
       len = src.length,
       r, g, b, h, s, v, calc;
 
@@ -206,7 +206,7 @@ HT.Skinner.prototype.mask = function(imageSrc, imageDst){
     // console.log((s+v)/h);
     calc = (s+v)/h;
     if (calc >= this.params.minPixel && calc <= this.params.maxPixel) {
-        value = 255;
+      value = 255;
     }
 
     dst[j ++] = value;
