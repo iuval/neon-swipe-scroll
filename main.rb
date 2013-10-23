@@ -11,3 +11,7 @@ end
 get '/unity' do
   erb :"index-unity"
 end
+
+get '/hand' do
+  erb :hand
+end
