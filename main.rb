@@ -15,3 +15,7 @@ end
 get '/hand' do
   erb :hand
 end
+
+get '/handfist' do
+  erb :handfist
+end

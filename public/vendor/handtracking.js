@@ -29,11 +29,35 @@ HT.Tracker = function(params){
   this.eroded = new CV.Image();
   this.contours = [];
 
-  this.skinner = new HT.Skinner({points: [], minPixel: 15, maxPixel: 150});
+  var w = this.params.w;
+  var h = this.params.h;
+  this.img_u8 = new jsfeat.matrix_t(w, h, jsfeat.U8_t | jsfeat.C1_t);
+  this.edg = new jsfeat.matrix_t(w, h, jsfeat.U8_t | jsfeat.C1_t);
+  this.ii_sum = new Int32Array((w+1)*(h+1));
+  this.ii_sqsum = new Int32Array((w+1)*(h+1));
+  this.ii_tilted = new Int32Array((w+1)*(h+1));
+  this.ii_canny = new Int32Array((w+1)*(h+1));
+  this.classifier = jsfeat.haar.frontalface;
+  this.min_scale = 2;
+  this.scale_factor = 1.15;
+  this.use_canny = false;
+  this.edges_density = 0.13;
+  this.equalize_histogram = true;
+
+  this.radius = 11;
+  this.sigma = 10;
+  this.kernel_size = (this.radius+1) << 1;
+
+  this.skinner = new HT.Skinner({fast: false,
+                                 points: [],
+                                 min_value: 15, max_value: 150,
+                                 min_hue: 3, max_hue: 33});
 };
 
 HT.Tracker.prototype.detect = function(image){
   this.skinner.mask(image, this.mask);
+
+ // jsfeat.imgproc.grayscale(this.mask.data, this.img_u8);
 
   if (this.params.fast){
     this.blackBorder(this.mask);
@@ -42,10 +66,52 @@ HT.Tracker.prototype.detect = function(image){
     CV.dilate(this.eroded, this.mask);
   }
 
+  this.removeFaces(image);
+
   this.contours = CV.findContours(this.mask);
 
   return this.findCandidate(this.contours, image.width * image.height * 0.05, 0.005);
   //return this.findCandidates(this.contours, image.width * image.height * 0.05, 0.005);
+};
+
+HT.Tracker.prototype.removeFaces = function(image, dest){
+  // jsfeat.imgproc.grayscale(image.data, this.img_u8.data);
+
+  // // possible options
+  // if(this.equalize_histogram) {
+  //   jsfeat.imgproc.equalize_histogram(this.img_u8, this.img_u8);
+  // }
+  //jsfeat.imgproc.gaussian_blur(this.img_u8, this.img_u8, 3);
+
+  jsfeat.imgproc.compute_integral_image(this.img_u8, this.ii_sum, this.ii_sqsum, this.classifier.tilted ? this.ii_tilted : null);
+
+  if(this.use_canny) {
+    jsfeat.imgproc.canny(this.img_u8, this.edg, 10, 50);
+    jsfeat.imgproc.compute_integral_image(this.edg, this.ii_canny, null, null);
+  }
+
+  jsfeat.haar.edges_density = this.edges_density;
+  var rects = jsfeat.haar.detect_multi_scale(this.ii_sum, this.ii_sqsum, this.ii_tilted, this.use_canny? this.ii_canny : null, this.img_u8.cols, this.img_u8.rows, this.classifier, this.scale_factor, this.min_scale);
+  rects = jsfeat.haar.group_rectangles(rects, 1);
+  // draw only most confident one
+  this.draw_faces(rects, dest, this.params.w/this.img_u8.cols, 1);
+};
+
+HT.Tracker.prototype.draw_faces = function(rects, dest, sc, max) {
+  var on = rects.length;
+  if(on && max) {
+    jsfeat.math.qsort(rects, 0, on-1, function(a,b){return (b.confidence<a.confidence);})
+  }
+  var n = max || on;
+  n = Math.min(n, on);
+  var r;
+  for(var i = ((r.y*sc)|0  + (r.x*sc)|0); i < n; ++i) {
+    r = rects[i];
+    for(var j = 0; j < n; ++i) {
+      dst[j] = 0;
+    }
+   // this.context.fillRect(,(r.y*sc)|0,(r.width*sc)|0,(r.height*sc)|0);
+  }
 };
 
 HT.Tracker.prototype.findCandidate = function(contours, minSize, epsilon){
@@ -130,37 +196,44 @@ HT.Skinner = function(params){
 };
 
 HT.Skinner.prototype.calibrate = function(image, i){
-  var src = imageSrc.data,
-      len = src.length,
-      r, g, b, h, s, v, calc;
+  var src = image.data, len = src.length + 2,
+      r, g, b, h, s, v,
+      calc = 0, cant = 0;
 
-  r = src[i];
-  g = src[i + 1];
-  b = src[i + 2];
+  for (; cant++ < 20; i += 4){
+    if (i < len) {
+      r = src[i];
+      g = src[i + 1];
+      b = src[i + 2];
 
-  v = Math.max(r, g, b);
-  s = v === 0? 0: 255 * ( v - Math.min(r, g, b) ) / v;
-  h = 0;
+      v = Math.max(r, g, b);
+      s = v === 0? 0: 255 * ( v - Math.min(r, g, b) ) / v;
+      h = 0;
 
-  if (0 !== s){
-    if (v === r){
-      h = 30 * (g - b) / s;
-    }else if (v === g){
-      h = 60 + ( (b - r) / s);
-    }else{
-      h = 120 + ( (r - g) / s);
-    }
-    if (h < 0){
-      h += 360;
+      if (0 !== s){
+        if (v === r){
+          h = 30 * (g - b) / s;
+        }else if (v === g){
+          h = 60 + ( (b - r) / s);
+        }else{
+          h = 120 + ( (r - g) / s);
+        }
+        if (h < 0){
+          h += 360;
+        }
+      }
+      cant += 1;
+      calc += (s+v)/h;
     }
   }
 
-  calc = (s+v)/h;
+  calc /= cant;
+  console.log('calibrated: ' + calc);
   this.params.points.push(calc);
-  if (this.params.minPixel > calc) {
-    this.params.minPixel = calc;
-  } else if (this.params.maxPixel < calc) {
-    this.params.maxPixel = calc;
+  if (this.params.min_value > calc) {
+    this.params.min_value = calc;
+  } else if (this.params.max_value < calc) {
+    this.params.max_value = calc;
   }
 };
 
@@ -195,18 +268,15 @@ HT.Skinner.prototype.mask = function(imageSrc, imageDst){
     value = 0;
 
     // Simple
-    // if (v >= 15 && v <= 250){
-    //   if (h >= 3 && h <= 33){
+    // if (v >= this.params.min_value && v <= this.params.max_value){
+    //   if (h >= this.params.min_hue && h <= this.params.max_hue){
     //     value = 255;
     //   }
     // }
 
-    // if (v >= 30 && v <= 200 &&
-    //     h >= 2 && h <= 20){
-    // console.log((s+v)/h);
     calc = (s+v)/h;
-    if (calc >= this.params.minPixel && calc <= this.params.maxPixel) {
-      value = 255;
+    if (calc >= this.params.min_value && calc <= this.params.max_value) {
+      value = calc;
     }
 
     dst[j ++] = value;

@@ -1,14 +1,11 @@
 var JSHandtracking = function(){
+  this.convex_hull = true;
+  this.convexity_defects = true;
+  this.skin_mask = true;
 };
 
 JSHandtracking.prototype.start = function() {
   var that = this;
-
-  this.tracker = new HT.Tracker( {} );
-
-  this.cbxHull = document.getElementById("cbxHull");
-  this.cbxDefects = document.getElementById("cbxDefects");
-  this.cbxSkin = document.getElementById("cbxSkin");
 
   this.video = document.getElementById("video");
   this.canvas = document.getElementById("canvas");
@@ -16,6 +13,8 @@ JSHandtracking.prototype.start = function() {
 
   this.canvas.width = parseInt(this.canvas.style.width) / 2;
   this.canvas.height = parseInt(this.canvas.style.height) / 2;
+
+  this.tracker = new HT.Tracker({ w: this.canvas.width, h: this.canvas.height });
 
   this.image = this.context.createImageData(
     this.canvas.width * 0.2, this.canvas.height * 0.2);
@@ -65,22 +64,26 @@ JSHandtracking.prototype.tick = function(){
 JSHandtracking.prototype.snapshot = function(){
   this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
 
+  return this.contextImage();
+};
+
+JSHandtracking.prototype.contextImage = function(){
   return this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 };
 
 JSHandtracking.prototype.draw = function(candidate){
   if (candidate){
 
-    if (this.cbxHull.checked){
+    if (this.convex_hull){
       this.drawHull(candidate.hull, "red");
     }
 
-    if (this.cbxDefects.checked){
+    if (this.convexity_defects){
       this.drawDefects(candidate.defects, "blue");
     }
   }
 
-  if (this.cbxSkin.checked){
+  if (this.skin_mask){
     this.context.putImageData(
       this.createImage(this.tracker.mask, this.image),
       this.canvas.width - this.image.width,
@@ -110,7 +113,9 @@ JSHandtracking.prototype.drawDefects = function(defects, color){
   var maxX = 0,
       minX = 0,
       maxY = 0,
-      minY = 0;
+      minY = 0,
+      midX = 0,
+      midY = 0;
 
   if (len > 0){
     this.context.strokeStyle = color;
@@ -123,6 +128,24 @@ JSHandtracking.prototype.drawDefects = function(defects, color){
       if (point.x < minX) { minX = point.x; }
       if (point.y > maxY) { maxY = point.y; }
       if (point.y < minY) { minY = point.y; }
+      midX += point.x;
+      midY += point.y;
+    }
+    midX /= len;
+    midY /= len;
+
+    this.context.strokeStyle = 'yellow';
+    this.context.beginPath();
+    this.context.arc(midX, midY, 10, 0, 2*Math.PI);
+    this.context.stroke();
+
+    this.context.strokeStyle = 'white';
+    for (i = len; i --;){
+      this.context.beginPath();
+      this.context.moveTo(midX, midY);
+      point = defects[i].depthPoint;
+      this.context.lineTo(point.x, point.y);
+      this.context.stroke();
     }
 
     var h = maxY - minY,
@@ -154,6 +177,5 @@ JSHandtracking.prototype.createImage = function(imageSrc, imageDst){
 };
 
 JSHandtracking.prototype.calibrate = function(x, y){
-  console.log('calibrated: ' + x + ', ' + y);
-  this.tracker.skinner.calibrate(this.snapshot(), y*this.canvas.width + x);
+  this.tracker.skinner.calibrate(this.snapshot(), (y-10)*this.canvas.width + x-10);
 };
