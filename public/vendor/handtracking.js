@@ -26,6 +26,7 @@ HT.Tracker = function(params){
   this.params = params || {};
 
   this.mask = new CV.Image();
+  this.bg = [];
   this.eroded = new CV.Image();
   this.contours = [];
 
@@ -54,64 +55,23 @@ HT.Tracker = function(params){
                                  min_hue: 3, max_hue: 33});
 };
 
-HT.Tracker.prototype.detect = function(image){
-  this.skinner.mask(image, this.mask);
+HT.Tracker.prototype.detect = function(image, ctx){
+  //this.skinner.mask(image, this.mask);
 
- // jsfeat.imgproc.grayscale(this.mask.data, this.img_u8);
-
+  this.mask.data = image.data;
   if (this.params.fast){
     this.blackBorder(this.mask);
   }else{
     CV.erode(this.mask, this.eroded);
     CV.dilate(this.eroded, this.mask);
   }
-
-  this.removeFaces(image);
+  image.data = this.mask.data;
+  ctx.putImageData(image, 0, 0);
 
   this.contours = CV.findContours(this.mask);
 
-  return this.findCandidate(this.contours, image.width * image.height * 0.05, 0.005);
-  //return this.findCandidates(this.contours, image.width * image.height * 0.05, 0.005);
-};
-
-HT.Tracker.prototype.removeFaces = function(image, dest){
-  // jsfeat.imgproc.grayscale(image.data, this.img_u8.data);
-
-  // // possible options
-  // if(this.equalize_histogram) {
-  //   jsfeat.imgproc.equalize_histogram(this.img_u8, this.img_u8);
-  // }
-  //jsfeat.imgproc.gaussian_blur(this.img_u8, this.img_u8, 3);
-
-  jsfeat.imgproc.compute_integral_image(this.img_u8, this.ii_sum, this.ii_sqsum, this.classifier.tilted ? this.ii_tilted : null);
-
-  if(this.use_canny) {
-    jsfeat.imgproc.canny(this.img_u8, this.edg, 10, 50);
-    jsfeat.imgproc.compute_integral_image(this.edg, this.ii_canny, null, null);
-  }
-
-  jsfeat.haar.edges_density = this.edges_density;
-  var rects = jsfeat.haar.detect_multi_scale(this.ii_sum, this.ii_sqsum, this.ii_tilted, this.use_canny? this.ii_canny : null, this.img_u8.cols, this.img_u8.rows, this.classifier, this.scale_factor, this.min_scale);
-  rects = jsfeat.haar.group_rectangles(rects, 1);
-  // draw only most confident one
-  this.draw_faces(rects, dest, this.params.w/this.img_u8.cols, 1);
-};
-
-HT.Tracker.prototype.draw_faces = function(rects, dest, sc, max) {
-  var on = rects.length;
-  if(on && max) {
-    jsfeat.math.qsort(rects, 0, on-1, function(a,b){return (b.confidence<a.confidence);})
-  }
-  var n = max || on;
-  n = Math.min(n, on);
-  var r;
-  for(var i = ((r.y*sc)|0  + (r.x*sc)|0); i < n; ++i) {
-    r = rects[i];
-    for(var j = 0; j < n; ++i) {
-      dst[j] = 0;
-    }
-   // this.context.fillRect(,(r.y*sc)|0,(r.width*sc)|0,(r.height*sc)|0);
-  }
+  //return this.findCandidate(this.contours, image.width * image.height * 0.05, 0.005);
+  return this.findCandidates(this.contours, image.width * image.height * 0.05, 0.005);
 };
 
 HT.Tracker.prototype.findCandidate = function(contours, minSize, epsilon){

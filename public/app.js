@@ -52,7 +52,7 @@ var init = function (unity, vertical) {
       }, function(localMediaStream) {
         // On Succecss
         // Create a canvas element
-        var canvas = document.createElement('canvas');
+        var canvas = document.getElementById('canvas');
         canvas.width = 128;
         canvas.height = 96;
 

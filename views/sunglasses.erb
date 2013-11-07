@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pick Your Glasses</title>
+  <script src="vendor/js-objectdetect/compatibility.js"></script>
+  <script src="vendor/js-objectdetect/smoother.js"></script>
+  
+  <script src="vendor/js-objectdetect/objectdetect.js"></script>
+  <script src="vendor/js-objectdetect/objectdetect.frontalface.js"></script>
+  <script src="vendor/js-objectdetect/objectdetect.handopen.js"></script>
+  
+  <script src="vendor/js-objectdetect/jquery.js"></script>
+  <script src="vendor/js-objectdetect/jquery.objectdetect.js"></script>
+  
+  <script>
+  var smoother = new Smoother(0.85, [0, 0, 0, 0, 0]);
+    
+  $(window).load(function() {
+    var canvas = document.getElementById('canvas');
+    var canvasWidth     = canvas.width;
+    var canvasHeight    = canvas.height;
+    var ctx             = canvas.getContext('2d');
+    var video = $("#video").get(0);
+    try {
+      compatibility.getUserMedia({video: true}, function(stream) {
+    ctx.fillStyle   = "rgb(0,255,0)";
+    ctx.strokeStyle = "rgb(0,255,0)";
+        try {
+          video.src = compatibility.URL.createObjectURL(stream);
+        } catch (error) {
+          video.src = stream;
+        }
+        video.play();
+        compatibility.requestAnimationFrame(tick);
+      }, function (error) {
+        alert("WebRTC not available");
+      });
+    } catch (error) {
+      alert(error);
+    }
+    function tick() {
+      compatibility.requestAnimationFrame(tick);
+      
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        $(video).objectdetect("all", {scaleMin: 3, scaleFactor: 1.1, classifier: objectdetect.handopen}, function(coords) {
+          if (coords[0]) {
+            var scale = canvasWidth/img_u8.cols;
+            coords = smoother.smooth(coords[0]);
+            
+          //  draw_squares(ctx, coords[0], scale);
+          } else {
+            $("#glasses").css("display", "none");
+          }
+        });
+      }
+    }
+
+    function draw_squares(ctx, r, sc) {
+      ctx.strokeRect((r.x*sc)|0,(r.y*sc)|0,(r.width*sc)|0,(r.height*sc)|0);
+    };
+      
+    $("#list img").click(function () {
+      $("#glasses").attr("src", $(this).attr("src"));
+    });
+  });
+  
+    </script>
+</head>
+
+<body>
+  <h1>Pick Your Glasses</h1>
+  <video id="video" style="float:left; margin-right:1em;"></video>
+  <canvas id="canvas" style="float:left; margin-right:1em;"></canvas>
+  <div id="list">
+    <img src="images/sunglasses_0.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_1.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_2.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_3.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_4.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_5.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_6.png" style="display:box; width:117px;">
+    <img src="images/sunglasses_7.png" style="display:box; width:117px;">
+  </div>
+  
+  <img id="glasses" src="images/sunglasses_0.png" style="position:absolute; display:none">
+  
+  Images are licensed under <img src="images/cc_by_sa_3.png"> by vectorarts.net
+</body>
+</html>

@@ -10,6 +10,11 @@ JSHandtracking.prototype.start = function() {
   this.video = document.getElementById("video");
   this.canvas = document.getElementById("canvas");
   this.context = this.canvas.getContext("2d");
+  this.buffers = [];
+  this.buffer_index = 0;
+  this.buffers_count = 50;
+  this.frames_to_skip = 30;
+  this.frames_skipped = this.frames_to_skip;
 
   this.canvas.width = parseInt(this.canvas.style.width) / 2;
   this.canvas.height = parseInt(this.canvas.style.height) / 2;
@@ -48,29 +53,124 @@ JSHandtracking.prototype.tick = function(){
   requestAnimationFrame( function() { return that.tick(); } );
 
   if (this.video.readyState === this.video.HAVE_ENOUGH_DATA){
-    image = this.snapshot();
+     this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
 
-    candidate = this.tracker.detect(image);
-   // contours = this.tracker.detect(image);
+    var sourceData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      // create an image if the previous image doesn’t exist
+    if (!this.lastImageData) {
+      this.lastImageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      for (var i = 0; i < this.buffers_count; i+=1) {
+        this.buffers[i] = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
+    this.frames_skipped -= 1;
+    if (this.frames_skipped == 0) {
+      var i = 0, j = 0;
+      while (i < (this.lastImageData.data.length * 0.25)) {
+        j = 4 * i;
+        // this.lastImageData.data[j] = this.fastAbs(sourceData.data[j] - this.lastImageData.data[j]);
+        // this.lastImageData.data[j + 1] = this.fastAbs(sourceData.data[j + 1] - this.lastImageData.data[j + 1]);
+        // this.lastImageData.data[j + 2] = this.fastAbs(sourceData.data[j + 2] - this.lastImageData.data[j + 2]);
+        // this.lastImageData.data[j + 3] = 0xFF;
+        this.lastImageData.data[j] = this.buffersAVG(j);//this.fastAbs(sourceData.data[j] - this.lastImageData.data[j]);
+        this.lastImageData.data[j + 1] = this.buffersAVG(j+1);// this.fastAbs(sourceData.data[j + 1] - this.lastImageData.data[j + 1]);
+        this.lastImageData.data[j + 2] = this.buffersAVG(j+2);// this.fastAbs(sourceData.data[j + 2] - this.lastImageData.data[j + 2]);
+        this.lastImageData.data[j + 3] = 0xFF;
+        ++i;
+      }
+      this.buffer_index = (this.buffer_index + 1) % this.buffers_count;
+      this.buffers[this.buffer_index] = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+      this.frames_skipped = this.frames_to_skip;
+    }
+    // create a ImageData instance to receive the blended result
+    var blendedData = this.context.createImageData(this.canvas.width, this.canvas.height);
+    // blend the 2 images
+    this.differenceAccuracy(blendedData.data, sourceData.data, this.lastImageData.data);
+    // store the current webcam image
+    //this.lastImageData = sourceData;
 
-    // for (var i = contours.length;i--;){
-    //   this.draw(contours[i]);
-    // }
 
-    this.draw(candidate);
+   // var image = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+   // this.update(this.context, image);
+   // candidate = this.tracker.detect(blendedData, this.context);
+    contours = this.tracker.detect(blendedData, this.context);
+//contours = this.tracker.detect(image, this.context);
+    for (var i = contours.length;i--;){
+       this.draw(contours[i]);
+     }
+
+    //this.draw(candidate);
   }
 };
 
-JSHandtracking.prototype.snapshot = function(){
-  this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+JSHandtracking.prototype.buffersAVG = function(j) {
+  var d = 0;
+  for (var i = 0; i < this.buffers_count; i+=1) {
+    d += this.buffers[i].data[j];
+  }
+  return d / this.buffers_count;
+}
 
-  return this.contextImage();
-};
 
-JSHandtracking.prototype.contextImage = function(){
-  return this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-};
+  JSHandtracking.prototype.fastAbs = function(value) {
+          // funky bitwise, equal Math.abs
+          return (value ^ (value >> 31)) - (value >> 31);
+  };
 
+  JSHandtracking.prototype.threshold = function(value) {
+          return (value > 0x25) ? 255 : 0;
+  };
+
+  JSHandtracking.prototype.difference = function(target, data1, data2) {
+          // blend mode difference
+          if (data1.length != data2.length) return null;
+          var i = 0;
+          while (i < (data1.length * 0.25)) {
+            target[4 * i] = data1[4 * i] == 0 ? 0 : this.fastAbs(data1[4 * i] - data2[4 * i]);
+            target[4 * i + 1] = data1[4 * i + 1] == 0 ? 0 : this.fastAbs(data1[4 * i + 1] - data2[4 * i + 1]);
+            target[4 * i + 2] = data1[4 * i + 2] == 0 ? 0 : this.fastAbs(data1[4 * i + 2] - data2[4 * i + 2]);
+            target[4 * i + 3] = 0xFF;
+            ++i;
+          }
+  };
+
+  JSHandtracking.prototype.differenceAccuracy = function(target, data1, data2) {
+          if (data1.length != data2.length) return null;
+          var i = 0;
+          while (i < (data1.length * 0.25)) {
+                  var average1 = (data1[4 * i] + data1[4 * i + 1] + data1[4 * i + 2]) / 3;
+                  var average2 = (data2[4 * i] + data2[4 * i + 1] + data2[4 * i + 2]) / 3;
+                  var diff = this.threshold(this.fastAbs(average1 - average2));
+                  if (diff == 255) {
+                    target[4 * i] = data1[4 * i] ;
+                    target[4 * i + 1] = data1[4 * i + 1] ;
+                    target[4 * i + 2] = data1[4 * i + 2] ;
+                    target[4 * i + 3] = data1[4 * i + 3] ;
+                  }
+                  ++i;
+          }
+  };
+
+  JSHandtracking.prototype.checkAreas = function() {
+          var data;
+          for (var h = 0; h < hotSpots.length; h++) {
+                  var blendedData = contextBlended.getImageData(hotSpots[h].x, hotSpots[h].y, hotSpots[h].width, hotSpots[h].height);
+                  var i = 0;
+                  var average = 0;
+                  while (i < (blendedData.data.length * 0.25)) {
+                          // make an average between the color channel
+                          average += (blendedData.data[i * 4] + blendedData.data[i * 4 + 1] + blendedData.data[i * 4 + 2]) / 3;
+                          ++i;
+                  }
+                  // calculate an average between the color values of the spot area
+                  average = Math.round(average / (blendedData.data.length * 0.25));
+                  if (average > 10) {
+                          // over a small limit, consider that a movement is detected
+                          data = {confidence: average, spot: hotSpots[h]};
+                          $(data.spot.el).trigger('motion', data);
+                  }
+          }
+  };
 JSHandtracking.prototype.draw = function(candidate){
   if (candidate){
 
@@ -83,12 +183,12 @@ JSHandtracking.prototype.draw = function(candidate){
     }
   }
 
-  if (this.skin_mask){
-    this.context.putImageData(
-      this.createImage(this.tracker.mask, this.image),
-      this.canvas.width - this.image.width,
-      this.canvas.height - this.image.height);
-  }
+  // if (this.skin_mask){
+  //   this.context.putImageData(
+  //     this.createImage(this.tracker.mask, this.image),
+  //     this.canvas.width - this.image.width,
+  //     this.canvas.height - this.image.height);
+  // }
 };
 
 JSHandtracking.prototype.drawHull = function(hull, color){

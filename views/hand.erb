@@ -15,11 +15,6 @@
     window.onload = function(){
       var demo = new JSHandtracking();
 
-      $('#canvas').click(function(e) {
-        var offset = $(this).offset();
-        demo.calibrate(e.clientX - offset.left, e.clientY - offset.top);
-      });
-
       demo.start();
 
       var gui = new dat.GUI();
@@ -44,6 +39,7 @@
     <video id="video" autoplay="true" style="display:none;"></video>
     <canvas id="canvas" style="width:320px; height:240px;border:1px solid black;"></canvas>
     <div style="margin: 15px;"><strong>Powered by <a href="http://code.google.com/p/js-handtracking/" target="_blank">js-handtracking</a></strong></div>
+                <button id="btn">bg</button>
   </center>
 
 </body>

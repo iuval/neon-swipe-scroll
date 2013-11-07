@@ -19,3 +19,11 @@ end
 get '/handfist' do
   erb :handfist
 end
+
+get '/sunglasses' do
+  erb :sunglasses
+end
+
+get '/aruco' do
+  erb :aruco
+end
